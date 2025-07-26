@@ -1,4 +1,6 @@
-# <img src="assets/logo.png" alt="logo" style="zoom: 25%;" />
+# <img src="https://raw.githubusercontent.com/emako/PcdSharp/refs/heads/master/assets/logo.png" alt="logo" style="zoom: 25%;" />
+
+[![GitHub license](https://img.shields.io/github/license/emako/PcdSharp)](https://github.com/emako/PcdSharp/blob/master/LICENSE) [![NuGet](https://img.shields.io/nuget/v/PcdSharp.svg)](https://nuget.org/packages/PcdSharp)
 
 # PcdSharp - PCD v0.7 Reader/Writer Library
 
@@ -10,7 +12,7 @@ PcdSharp 是一个用于读取和写入 Point Cloud Data (PCD) v0.7 格式文件
 - ✅ **读取功能**: 支持 ASCII, Binary, Binary Compressed 格式
 - ✅ **写入功能**: 支持 ASCII 和 Binary 格式
 - ✅ **泛型点云支持**: `PointCloud<T>` 支持任意点类型
-- ✅ **多种内置点类型**: PointXYZ, PointXYZRGBA, PointNormal, IntensityXYZ 等
+- ✅ **多种内置点类型**: PointXYZ, PointXYZRGBA, PointNormal, XYZIntensity 等
 - ✅ **自定义点类型**: 支持用户定义的点结构
 - ✅ **完整的头部信息解析和生成**
 - ✅ **多目标框架支持**: .NET Framework 4.6.2+ 到 .NET 9.0
@@ -25,7 +27,7 @@ PcdSharp 是一个用于读取和写入 Point Cloud Data (PCD) v0.7 格式文件
 | `PointXYZ` | 基本3D点 | X, Y, Z |
 | `PointXYZRGBA` | 带颜色的3D点 | X, Y, Z, RGBA |
 | `PointNormal` | 带法向量的3D点 | X, Y, Z, NormalX, NormalY, NormalZ, Curvature |
-| `IntensityXYZ` | 带强度信息的3D点 | Intensity, X, Y, Z |
+| `XYZIntensity` | 带强度信息的3D点 | X, Y, Z, Intensity |
 
 ### 自定义点类型
 PCDSharp 支持任何包含公共字段或属性的自定义点类型：
@@ -68,6 +70,9 @@ Console.WriteLine($"读取了 {xyzCloud.Count} 个点");
 // 读取 PointXYZRGBA 点云
 var rgbaCloud = PCDReader.Read<PointXYZRGBA>("colored_points.pcd");
 
+// 读取带强度信息的点云
+var intensityCloud = PCDReader.Read<XYZIntensity>("intensity_points.pcd");
+
 // 读取自定义点类型
 var customCloud = PCDReader.Read<MyCustomPoint>("custom_points.pcd");
 
@@ -75,6 +80,12 @@ var customCloud = PCDReader.Read<MyCustomPoint>("custom_points.pcd");
 foreach (var point in xyzCloud.Points)
 {
     Console.WriteLine($"点坐标: ({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
+}
+
+// 访问强度数据
+foreach (var point in intensityCloud.Points)
+{
+    Console.WriteLine($"点: ({point.X:F3}, {point.Y:F3}, {point.Z:F3}), 强度: {point.Intensity:F1}");
 }
 ```
 
@@ -204,6 +215,14 @@ PcdSharp/
 │   └── *.pcd                    # 测试用 PCD 文件
 └── README.md                    # 本文档
 ```
+│   └── Polyfills/
+│       └── Vector3.cs           # .NET Framework 兼容性
+├── example/                      # 示例程序
+│   ├── PcdSharp.Examples.csproj # 示例项目文件
+│   ├── Program.cs               # 示例程序主文件
+│   └── *.pcd                    # 测试用 PCD 文件
+└── README.md                    # 本文档
+```
 
 ## PCD 文件格式示例
 
@@ -242,6 +261,23 @@ DATA ascii
 0.0 0.0 0.0 4278190335
 1.0 0.0 0.0 16711935
 0.0 1.0 0.0 65535
+```
+
+### 带强度信息的 ASCII 格式
+```
+# .PCD v0.7 - Point Cloud Data file format
+VERSION 0.7
+FIELDS x y z intensity
+SIZE 4 4 4 4
+TYPE F F F F
+COUNT 1 1 1 1
+WIDTH 3
+HEIGHT 1
+POINTS 3
+DATA ascii
+0.0 0.0 0.0 100.5
+1.0 0.0 0.0 85.2
+0.0 1.0 0.0 120.8
 ```
 
 ## 编译和运行
@@ -327,6 +363,16 @@ dotnet run test_simple_ascii.pcd
 | `IsOrganized` | 是否组织化 |
 | `At(int col, int row)` | 访问组织化点云中的特定点 |
 | `Add(T point)` | 添加点 |
+| `Clear()` | 清空所有点 |
+| `Reserve(int capacity)` | 预留内存容量 |
+| `Dispose()` | 释放资源（实现IDisposable接口） |
+
+> **注意**: PointCloud<T> 实现了 IDisposable 接口，推荐使用 `using` 语句进行资源管理：
+> ```csharp
+> using var pointCloud = new PointCloudImpl<PointXYZ>();
+> // 使用 pointCloud...
+> // 自动调用 Dispose()
+> ```
 
 ## 支持的 .NET 版本
 
@@ -339,6 +385,15 @@ dotnet run test_simple_ascii.pcd
 - **写入限制**: 目前不支持 Binary Compressed 格式的写入
 - **内存使用**: 大文件会占用大量内存，建议对超大文件进行分块处理
 - **.NET Framework**: 在 .NET Framework 4.6.2 中，组织化点云的 `At()` 方法不可用
+
+## 兼容性和质量保证
+
+- ✅ **PCL 兼容**: 生成的 PCD 文件与 Point Cloud Library 完全兼容
+- ✅ **CloudCompare 支持**: 支持在 CloudCompare 中导入和查看
+- ✅ **标准合规**: 严格遵循 PCD v0.7 格式规范
+- ✅ **跨平台**: 支持 Windows、Linux、macOS
+- ✅ **编码规范**: 输出文件使用标准 UTF-8 编码（无BOM），LF换行符
+- ✅ **字段顺序**: 自动按照 PCL 标准对字段进行排序（x, y, z, normal_x, normal_y, normal_z, curvature, rgb, rgba, intensity, etc.）
 
 ## 许可证
 

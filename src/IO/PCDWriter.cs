@@ -299,8 +299,9 @@ public class PCDWriter
     /// </summary>
     private static void WriteHeader(Stream stream, PCDHeader header)
     {
-        using var writer = new StreamWriter(stream, Encoding.UTF8, 1024, leaveOpen: true);
+        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true);
 
+        writer.NewLine = "\n"; // PCD文件使用LF换行
         writer.WriteLine($"# .PCD v{header.Version} - Point Cloud Data file format");
         writer.WriteLine($"VERSION {header.Version}");
         writer.WriteLine($"FIELDS {string.Join(" ", header.Fields)}");
@@ -335,7 +336,8 @@ public class PCDWriter
     /// </summary>
     private static void WritePointsAscii<PointT>(Stream stream, PointCloud<PointT> pointCloud, List<FieldWriter> fieldWriters)
     {
-        using var writer = new StreamWriter(stream, Encoding.UTF8, 1024, leaveOpen: true);
+        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true);
+        writer.NewLine = "\n"; // PCD文件使用LF换行
 
         foreach (var point in pointCloud.Points)
         {

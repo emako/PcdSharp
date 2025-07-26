@@ -15,7 +15,7 @@
 		<PackageProjectUrl>https://github.com/emako/PcdSharp</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/emako/PcdSharp</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>pcd pcl</PackageTags>
+		<PackageTags>PCD PointCloud PointCloudData PCL</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageIcon>app.png</PackageIcon>

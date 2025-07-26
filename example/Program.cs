@@ -1,6 +1,5 @@
 using PcdSharp.IO;
 using PcdSharp.Struct;
-using PcdSharp;
 
 namespace PcdSharp.Examples;
 
@@ -193,10 +192,12 @@ internal sealed class Program
     /// </summary>
     private static PointCloud<PointXYZ> CreateSampleXYZPointCloud()
     {
-        var pointCloud = new PointCloudImpl<PointXYZ>();
-        pointCloud.Width = 10;
-        pointCloud.Height = 1;
-        pointCloud.IsDense = true;
+        var pointCloud = new PointCloudImpl<PointXYZ>
+        {
+            Width = 10,
+            Height = 1,
+            IsDense = true,
+        };
 
         // 创建一个简单的立方体点云
         for (int i = 0; i < 10; i++)
@@ -219,10 +220,12 @@ internal sealed class Program
     /// </summary>
     private static PointCloud<PointXYZRGBA> CreateSampleRGBAPointCloud()
     {
-        var pointCloud = new PointCloudImpl<PointXYZRGBA>();
-        pointCloud.Width = 8;
-        pointCloud.Height = 1;
-        pointCloud.IsDense = true;
+        var pointCloud = new PointCloudImpl<PointXYZRGBA>
+        {
+            Width = 8,
+            Height = 1,
+            IsDense = true,
+        };
 
         // 创建一个彩色的螺旋线
         for (int i = 0; i < 8; i++)
@@ -247,10 +250,12 @@ internal sealed class Program
     /// </summary>
     private static PointCloud<IntensityXYZ> CreateSampleIntensityPointCloud()
     {
-        var pointCloud = new PointCloudImpl<IntensityXYZ>();
-        pointCloud.Width = 6;
-        pointCloud.Height = 1;
-        pointCloud.IsDense = true;
+        var pointCloud = new PointCloudImpl<IntensityXYZ>
+        {
+            Width = 6,
+            Height = 1,
+            IsDense = true,
+        };
 
         // 创建一个带强度信息的直线
         for (int i = 0; i < 6; i++)

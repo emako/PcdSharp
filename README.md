@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/emako/PcdSharp/refs/heads/master/assets/logo.png" alt="logo" style="zoom: 25%;" />
 
-[![GitHub license](https://img.shields.io/github/license/emako/PcdSharp)](https://github.com/emako/PcdSharp/blob/master/LICENSE) [![NuGet](https://img.shields.io/nuget/v/PcdSharp.svg)](https://nuget.org/packages/PcdSharp)
+[![GitHub license](https://img.shields.io/github/license/emako/PcdSharp)](https://github.com/emako/PcdSharp/blob/master/LICENSE) [![NuGet](https://img.shields.io/nuget/v/PcdSharp.svg)](https://nuget.org/packages/PcdSharp) [![Actions](https://github.com/emako/PcdSharp/actions/workflows/build.yml/badge.svg)](https://github.com/emako/PcdSharp/actions/workflows/build.yml)
 
 # PcdSharp - PCD v0.7 Reader/Writer Library
 

@@ -215,14 +215,6 @@ PcdSharp/
 │   └── *.pcd                    # 测试用 PCD 文件
 └── README.md                    # 本文档
 ```
-│   └── Polyfills/
-│       └── Vector3.cs           # .NET Framework 兼容性
-├── example/                      # 示例程序
-│   ├── PcdSharp.Examples.csproj # 示例项目文件
-│   ├── Program.cs               # 示例程序主文件
-│   └── *.pcd                    # 测试用 PCD 文件
-└── README.md                    # 本文档
-```
 
 ## PCD 文件格式示例
 

@@ -54,7 +54,7 @@ internal sealed class Program
                 else if (fileName.Contains("intensity"))
                 {
                     Console.WriteLine("\n正在使用泛型方法读取 IntensityXYZ 点云数据...");
-                    var pointCloud = PCDReader.Read<IntensityXYZ>(filePath);
+                    var pointCloud = PCDReader.Read<XYZIntensity>(filePath);
                     Console.WriteLine($"成功读取点云 - 宽度: {pointCloud.Width}, 高度: {pointCloud.Height}");
                     Console.WriteLine($"总点数: {pointCloud.Count}, 是否密集: {pointCloud.IsDense}");
 
@@ -133,7 +133,7 @@ internal sealed class Program
             PointXYZ xyz => $"({xyz.X:F3}, {xyz.Y:F3}, {xyz.Z:F3})",
             PointXYZRGBA xyzrgba => $"({xyzrgba.X:F3}, {xyzrgba.Y:F3}, {xyzrgba.Z:F3}) RGBA: 0x{xyzrgba.RGBA:X8}",
             PointNormal normal => $"({normal.X:F3}, {normal.Y:F3}, {normal.Z:F3}) N:({normal.NormalX:F2}, {normal.NormalY:F2}, {normal.NormalZ:F2}) C:{normal.Curvature:F3}",
-            IntensityXYZ intensityxyz => $"{intensityxyz.Intensity} ({intensityxyz.X:F3}, {intensityxyz.Y:F3}, {intensityxyz.Z:F3})",
+            XYZIntensity intensityxyz => $"{intensityxyz.Intensity} ({intensityxyz.X:F3}, {intensityxyz.Y:F3}, {intensityxyz.Z:F3})",
             _ => point.ToString() ?? "Unknown"
         };
     }
@@ -291,9 +291,9 @@ internal sealed class Program
     /// <summary>
     /// 创建示例Intensity点云
     /// </summary>
-    private static PointCloud<IntensityXYZ> CreateSampleIntensityPointCloud()
+    private static PointCloud<XYZIntensity> CreateSampleIntensityPointCloud()
     {
-        var pointCloud = new PointCloudImpl<IntensityXYZ>
+        var pointCloud = new PointCloudImpl<XYZIntensity>
         {
             Header = new PCDHeader
             {
@@ -307,7 +307,7 @@ internal sealed class Program
         // 创建一个带强度信息的直线
         for (int i = 0; i < 6; i++)
         {
-            var point = new IntensityXYZ
+            var point = new XYZIntensity
             {
                 Intensity = (float)(100 + i * 50), // 强度从100到350
                 X = (float)(i * 0.2),

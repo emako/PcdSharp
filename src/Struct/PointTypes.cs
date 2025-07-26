@@ -143,25 +143,25 @@ public unsafe struct PointXYZL
     public uint Label;
 }
 
-[DebuggerDisplay("{Intensity}, {V}")]
+[DebuggerDisplay("{V}, {Intensity}")]
 [StructLayout(LayoutKind.Explicit, Size = 16)]
-public unsafe struct IntensityXYZ
+public unsafe struct XYZIntensity
 {
     [FieldOffset(0)]
-    public float Intensity;
-
-    [FieldOffset(4)]
     public float X;
 
-    [FieldOffset(8)]
+    [FieldOffset(4)]
     public float Y;
 
-    [FieldOffset(12)]
+    [FieldOffset(8)]
     public float Z;
+
+    [FieldOffset(12)]
+    public float Intensity;
 
     [FieldOffset(0)]
     public fixed float data[4];
 
-    [FieldOffset(4)]
+    [FieldOffset(0)]
     public Vector3 V;
 }

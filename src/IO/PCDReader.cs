@@ -110,23 +110,13 @@ public class PCDReader
     /// <returns>点云对象</returns>
     public static PointCloud<PointT> Read<PointT>(Stream stream) where PointT : new()
     {
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-
-        return Read<PointT>(reader, stream);
-    }
-
-    /// <summary>
-    /// 读取任意类型的点云数据
-    /// </summary>
-    /// <typeparam name="PointT">点类型</typeparam>
-    /// <param name="filePath">PCD文件路径</param>
-    /// <returns>点云对象</returns>
-    public static PointCloud<PointT> Read<PointT>(string filePath) where PointT : new()
-    {
         // 读取所有字节以便处理二进制格式
-        var fileBytes = File.ReadAllBytes(filePath);
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+
         var headerText = Encoding.UTF8.GetString(fileBytes);
-        
+
         // 找到DATA行
         var lines = headerText.Split('\n');
         int dataLineIndex = -1;
@@ -139,20 +129,20 @@ public class PCDReader
                 break;
             }
         }
-        
+
         if (dataLineIndex == -1)
             throw new PcdException("Invalid PCD file: missing DATA field");
-        
+
         // 计算数据开始位置
         var headerLines = lines.Take(dataLineIndex + 1);
         var headerBytes = Encoding.UTF8.GetBytes(string.Join("\n", headerLines) + "\n");
         var dataStartPosition = headerBytes.Length;
-        
+
         // 使用内存流读取头部
         using var headerStream = new MemoryStream(headerBytes);
         using var reader = new StreamReader(headerStream, Encoding.UTF8);
         var header = ReadHeader(reader);
-        
+
         var pointCloud = new PointCloudImpl<PointT>((int)header.Points)
         {
             Width = header.Width,
@@ -165,11 +155,10 @@ public class PCDReader
         switch (header.Data)
         {
             case DataEncoding.ASCII:
-                // 对于ASCII格式，重新用文件流读取
-                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-                using (var fileReader = new StreamReader(fileStream, Encoding.UTF8))
+                // 对于ASCII格式，重新用内存流读取
+                using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
+                using (var fileReader = new StreamReader(dataStream, Encoding.UTF8))
                 {
-                    ReadHeader(fileReader); // 跳过头部
                     ReadPointsAscii(fileReader, pointCloud, factory);
                 }
                 break;
@@ -198,51 +187,15 @@ public class PCDReader
     }
 
     /// <summary>
-    /// 从流中读取任意类型的点云数据
-    /// </summary>
-    /// <typeparam name="PointT">点类型</typeparam>
-    /// <param name="reader">文本读取器</param>
-    /// <param name="stream">文件流（用于二进制读取）</param>
-    /// <returns>点云对象</returns>
-    public static PointCloud<PointT> Read<PointT>(StreamReader reader, Stream? stream = null) where PointT : new()
-    {
-        var header = ReadHeader(reader);
-        var pointCloud = new PointCloudImpl<PointT>((int)header.Points)
-        {
-            Width = header.Width,
-            Height = header.Height,
-            IsDense = header.IsDense
-        };
-
-        var factory = new PointFactory<PointT>(header);
-
-        switch (header.Data)
-        {
-            case DataEncoding.ASCII:
-                ReadPointsAscii(reader, pointCloud, factory);
-                break;
-
-            case DataEncoding.Binary:
-            case DataEncoding.BinaryCompressed:
-                throw new NotSupportedException("Binary and Binary Compressed formats are only supported when reading from file path");
-
-            default:
-                throw new ArgumentException($"Unsupported data encoding: {header.Data}");
-        }
-
-        return pointCloud;
-    }
-
-    /// <summary>
-    /// 读取点云数据并返回点列表（向后兼容）
+    /// 读取任意类型的点云数据
     /// </summary>
     /// <typeparam name="PointT">点类型</typeparam>
     /// <param name="filePath">PCD文件路径</param>
-    /// <returns>点列表</returns>
-    public static List<PointT> ReadPoints<PointT>(string filePath) where PointT : new()
+    /// <returns>点云对象</returns>
+    public static PointCloud<PointT> Read<PointT>(string filePath) where PointT : new()
     {
-        var pointCloud = Read<PointT>(filePath);
-        return pointCloud.Points;
+        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
+        return Read<PointT>(fileStream);
     }
 
     private static void ReadPointsAscii<PointT>(StreamReader reader, PointCloudImpl<PointT> pointCloud, PointFactory<PointT> factory) where PointT : new()
@@ -283,7 +236,7 @@ public class PCDReader
         var bytesRead = stream.Read(compressionInfo, 0, 8);
         if (bytesRead != 8)
             throw new PcdException("Failed to read compression info from binary compressed data");
-        
+
         int compressedSize = BitConverter.ToInt32(compressionInfo, 0);
         int decompressedSize = BitConverter.ToInt32(compressionInfo, 4);
 
@@ -307,11 +260,11 @@ public class PCDReader
     {
         int pointCount = (int)header.Points;
         int fieldCount = header.Fields.Count;
-        
+
         // 为每个点创建字节数组
         var pointSize = header.Size.Sum();
         var points = new List<byte[]>();
-        
+
         for (int i = 0; i < pointCount; i++)
         {
             points.Add(new byte[pointSize]);

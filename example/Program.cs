@@ -160,10 +160,42 @@ internal sealed class Program
             // 验证写入的文件
             VerifyWrittenFile(asciiPath);
             VerifyWrittenFile(binaryPath);
+
+            // 测试从Stream读取功能
+            TestStreamReading(asciiPath, binaryPath);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"写入文件时出错: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 测试从Stream读取功能
+    /// </summary>
+    private static void TestStreamReading(string asciiPath, string binaryPath)
+    {
+        Console.WriteLine($"\n== 测试Stream读取功能 ==");
+
+        try
+        {
+            // 测试ASCII格式的Stream读取
+            using (var asciiStream = new FileStream(asciiPath, FileMode.Open, FileAccess.Read))
+            {
+                var asciiCloud = PCDReader.Read<PointXYZ>(asciiStream);
+                Console.WriteLine($"✓ 从ASCII Stream读取成功: {asciiCloud.Count} 个点");
+            }
+
+            // 测试Binary格式的Stream读取
+            using (var binaryStream = new FileStream(binaryPath, FileMode.Open, FileAccess.Read))
+            {
+                var binaryCloud = PCDReader.Read<PointXYZ>(binaryStream);
+                Console.WriteLine($"✓ 从Binary Stream读取成功: {binaryCloud.Count} 个点");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Stream读取测试失败: {ex.Message}");
         }
     }
 

@@ -56,10 +56,15 @@ public class PointFactory<PointT> where PointT : new()
 
         foreach (var mapping in _fieldMappings)
         {
-            if (_binarySetters.TryGetValue(mapping.FieldName, out var setter))
+            // 只处理有对应属性的字段
+            if (mapping.PropertyInfo != null || mapping.FieldInfo != null)
             {
-                setter(container, buffer, mapping.Offset);
+                if (_binarySetters.TryGetValue(mapping.FieldName, out var setter))
+                {
+                    setter(container, buffer, mapping.Offset);
+                }
             }
+            // 跳过没有对应属性的字段（如 "_" 占位符）
         }
 
         return container.Value;
@@ -77,13 +82,17 @@ public class PointFactory<PointT> where PointT : new()
         {
             var fieldName = header.Fields[i].ToLower();
             var size = header.Size[i];
+            var count = header.Count[i];
             var dataType = header.Type[i];
+            var totalFieldSize = size * count; // 考虑COUNT字段
 
             // 先尝试找到匹配的属性
             var property = FindMatchingProperty(properties, fieldName);
+            FieldMapping mapping;
+            
             if (property != null)
             {
-                mappings.Add(new FieldMapping
+                mapping = new FieldMapping
                 {
                     FieldName = fieldName,
                     PropertyName = property.Name,
@@ -92,8 +101,9 @@ public class PointFactory<PointT> where PointT : new()
                     FieldIndex = i,
                     Offset = offset,
                     Size = size,
+                    Count = count,
                     DataType = dataType
-                });
+                };
             }
             else
             {
@@ -101,7 +111,7 @@ public class PointFactory<PointT> where PointT : new()
                 var field = FindMatchingField(fields, fieldName);
                 if (field != null)
                 {
-                    mappings.Add(new FieldMapping
+                    mapping = new FieldMapping
                     {
                         FieldName = fieldName,
                         PropertyName = field.Name,
@@ -110,12 +120,33 @@ public class PointFactory<PointT> where PointT : new()
                         FieldIndex = i,
                         Offset = offset,
                         Size = size,
+                        Count = count,
                         DataType = dataType
-                    });
+                    };
+                }
+                else
+                {
+                    // 即使没有匹配的属性，也要创建字段映射以正确计算偏移量
+                    mapping = new FieldMapping
+                    {
+                        FieldName = fieldName,
+                        PropertyName = null, // 标记为没有对应属性
+                        PropertyType = null,
+                        PropertyInfo = null,
+                        FieldInfo = null,
+                        FieldIndex = i,
+                        Offset = offset,
+                        Size = size,
+                        Count = count,
+                        DataType = dataType
+                    };
                 }
             }
 
-            offset += size;
+            mappings.Add(mapping);
+
+            // 无论是否找到匹配的属性，都要更新偏移量
+            offset += totalFieldSize;
         }
 
         return mappings;

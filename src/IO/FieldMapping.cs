@@ -9,15 +9,19 @@ public class FieldMapping
 {
     public string FieldName { get; set; } = string.Empty;
 
-    public string PropertyName { get; set; } = string.Empty;
+    public string? PropertyName { get; set; }
 
-    public Type PropertyType { get; set; } = typeof(object);
+    public Type? PropertyType { get; set; }
 
     public int FieldIndex { get; set; } // 在PCD文件中的字段索引
 
     public int Offset { get; set; }
 
-    public int Size { get; set; }
+    public int Size { get; set; } // 单个元素的大小
+
+    public int Count { get; set; } = 1; // 元素数量
+
+    public int TotalSize => Size * Count; // 总大小
 
     public string DataType { get; set; } = string.Empty;
 
@@ -28,4 +32,6 @@ public class FieldMapping
     public bool IsProperty => PropertyInfo != null;
 
     public bool IsField => FieldInfo != null;
+
+    public bool HasTarget => PropertyInfo != null || FieldInfo != null;
 }

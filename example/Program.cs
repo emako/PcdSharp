@@ -72,9 +72,6 @@ internal sealed class Program
             Console.WriteLine("- 完整的头部信息解析");
             Console.WriteLine("- 向后兼容的 API");
         }
-
-        Console.WriteLine("\n按任意键退出...");
-        Console.ReadKey();
     }
 
     static void PrintHeaderInfo(PCDHeader header)

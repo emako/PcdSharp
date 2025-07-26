@@ -1,12 +1,28 @@
-﻿namespace PcdSharp;
+﻿using PcdSharp.IO;
+
+namespace PcdSharp;
 
 public abstract class PointCloud<PointT>
 {
-    public abstract int Width { get; set; }
+    /// <summary>
+    /// 点云头部信息，包含版本、字段定义、视点等元数据
+    /// </summary>
+    public abstract PCDHeader? Header { get; set; }
 
-    public abstract int Height { get; set; }
+    /// <summary>
+    /// 点云宽度，从Header中获取，如果Header不存在则使用点数
+    /// </summary>
+    public int Width => Header?.Width ?? Count;
 
-    public abstract bool IsDense { get; set; }
+    /// <summary>
+    /// 点云高度，从Header中获取，如果Header不存在则默认为1
+    /// </summary>
+    public int Height => Header?.Height ?? 1;
+
+    /// <summary>
+    /// 是否为密集点云，从Header中获取，如果Header不存在则默认为true
+    /// </summary>
+    public bool IsDense => Header?.IsDense ?? true;
 
     public abstract List<PointT> Points { get; set; }
 

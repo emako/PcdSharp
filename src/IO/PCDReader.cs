@@ -145,9 +145,7 @@ public class PCDReader
 
         var pointCloud = new PointCloudImpl<PointT>((int)header.Points)
         {
-            Width = header.Width,
-            Height = header.Height,
-            IsDense = header.IsDense
+            Header = header
         };
 
         var factory = new PointFactory<PointT>(header);

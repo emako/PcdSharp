@@ -103,14 +103,14 @@ public class PCDWriter
 
         return new PCDHeader
         {
-            Version = "0.7",
+            Version = pointCloud.Header?.Version ?? "0.7",
             Fields = fields,
             Size = sizes,
             Type = types,
             Count = counts,
             Width = pointCloud.Width > 0 ? pointCloud.Width : pointCloud.Count,
             Height = pointCloud.Height > 0 ? pointCloud.Height : 1,
-            ViewPoint = null,
+            ViewPoint = pointCloud.Header?.ViewPoint, // 保留原有的 ViewPoint
             Points = pointCloud.Count,
             Data = encoding,
             IsDense = pointCloud.IsDense

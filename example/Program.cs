@@ -217,6 +217,9 @@ internal sealed class Program
         // 创建IntensityXYZ点云
         var intensityPointCloud = CreateSampleIntensityPointCloud();
         DemoWritePointCloud(intensityPointCloud, "created_intensity");
+
+        // 测试Header保留功能
+        TestHeaderPreservation();
     }
 
     /// <summary>
@@ -226,9 +229,13 @@ internal sealed class Program
     {
         var pointCloud = new PointCloudImpl<PointXYZ>
         {
-            Width = 10,
-            Height = 1,
-            IsDense = true,
+            Header = new PCDHeader
+            {
+                Width = 10,
+                Height = 1,
+                IsDense = true,
+                Version = "0.7"
+            }
         };
 
         // 创建一个简单的立方体点云
@@ -254,9 +261,13 @@ internal sealed class Program
     {
         var pointCloud = new PointCloudImpl<PointXYZRGBA>
         {
-            Width = 8,
-            Height = 1,
-            IsDense = true,
+            Header = new PCDHeader
+            {
+                Width = 8,
+                Height = 1,
+                IsDense = true,
+                Version = "0.7"
+            }
         };
 
         // 创建一个彩色的螺旋线
@@ -284,9 +295,13 @@ internal sealed class Program
     {
         var pointCloud = new PointCloudImpl<IntensityXYZ>
         {
-            Width = 6,
-            Height = 1,
-            IsDense = true,
+            Header = new PCDHeader
+            {
+                Width = 6,
+                Height = 1,
+                IsDense = true,
+                Version = "0.7"
+            }
         };
 
         // 创建一个带强度信息的直线
@@ -348,6 +363,51 @@ internal sealed class Program
         catch (Exception ex)
         {
             Console.WriteLine($"  - 验证失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 测试Header保留功能
+    /// </summary>
+    private static void TestHeaderPreservation()
+    {
+        Console.WriteLine("\n== 测试Header保留功能 ==");
+
+        try
+        {
+            // 读取包含ViewPoint的文件
+            var originalCloud = PCDReader.Read<PointXYZ>("test_simple_ascii.pcd");
+
+            Console.WriteLine($"原始点云信息:");
+            Console.WriteLine($"  点数: {originalCloud.Count}");
+            Console.WriteLine($"  Header是否存在: {originalCloud.Header != null}");
+
+            if (originalCloud.Header != null)
+            {
+                Console.WriteLine($"  ViewPoint: {originalCloud.Header.ViewPoint}");
+                Console.WriteLine($"  Version: {originalCloud.Header.Version}");
+                Console.WriteLine($"  Fields: {string.Join(",", originalCloud.Header.Fields)}");
+            }
+
+            // 重新写入为ASCII格式
+            PCDWriter.Write("output_preserved_ascii.pcd", originalCloud, DataEncoding.ASCII);
+            Console.WriteLine("✓ 已写入 output_preserved_ascii.pcd");
+
+            // 重新写入为Binary格式
+            PCDWriter.Write("output_preserved_binary.pcd", originalCloud, DataEncoding.Binary);
+            Console.WriteLine("✓ 已写入 output_preserved_binary.pcd");
+
+            // 验证重新读取
+            var reloadedCloud = PCDReader.Read<PointXYZ>("output_preserved_ascii.pcd");
+            Console.WriteLine($"重新读取后Header保留: {reloadedCloud.Header != null}");
+            if (reloadedCloud.Header != null)
+            {
+                Console.WriteLine($"  重新读取ViewPoint: {reloadedCloud.Header.ViewPoint}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Header保留测试失败: {ex.Message}");
         }
     }
 }

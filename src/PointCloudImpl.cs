@@ -1,3 +1,5 @@
+using PcdSharp.IO;
+
 namespace PcdSharp;
 
 /// <summary>
@@ -8,11 +10,10 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
 {
     private List<PointT> _points;
 
-    public override int Width { get; set; }
-
-    public override int Height { get; set; } = 1;
-
-    public override bool IsDense { get; set; } = true;
+    /// <summary>
+    /// 点云头部信息，包含版本、字段定义、视点等元数据
+    /// </summary>
+    public override PCDHeader? Header { get; set; }
 
     public override List<PointT> Points
     {
@@ -109,8 +110,14 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
     {
         _points.Clear();
         _points.Capacity = 0;
-        Width = 0;
-        Height = 1;
+        
+        // 如果有 Header，更新 Header 中的信息
+        if (Header != null)
+        {
+            Header.Width = 0;
+            Header.Height = 1;
+            Header.Points = 0;
+        }
     }
 
     /// <summary>

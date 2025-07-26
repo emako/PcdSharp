@@ -34,4 +34,23 @@ public class FieldMapping
     public bool IsField => FieldInfo != null;
 
     public bool HasTarget => PropertyInfo != null || FieldInfo != null;
+
+    public static Dictionary<string, string[]> Mappings => new()
+    {
+        { "x", ["X", "x"] },
+        { "y", ["Y", "y"] },
+        { "z", ["Z", "z"] },
+        { "rgb", ["RGB", "RGBA", "rgb", "rgba"] },
+        { "rgba", ["RGBA", "RGB", "rgba", "rgb"] },
+        { "r", ["R", "r"] },
+        { "g", ["G", "g"] },
+        { "b", ["B", "b"] },
+        { "a", ["A", "a"] },
+        { "normal_x", ["NormalX", "NX", "normal_x"] },
+        { "normal_y", ["NormalY", "NY", "normal_y"] },
+        { "normal_z", ["NormalZ", "NZ", "normal_z"] },
+        { "curvature", ["Curvature", "curvature"] },
+        { "intensity", ["Intensity", "intensity"] },
+        { "label", ["Label", "label"] },
+    };
 }

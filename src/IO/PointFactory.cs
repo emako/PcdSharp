@@ -89,7 +89,7 @@ public class PointFactory<PointT> where PointT : new()
             // 先尝试找到匹配的属性
             var property = FindMatchingProperty(properties, fieldName);
             FieldMapping mapping;
-            
+
             if (property != null)
             {
                 mapping = new FieldMapping
@@ -159,26 +159,7 @@ public class PointFactory<PointT> where PointT : new()
             string.Equals(p.Name, fieldName, StringComparison.OrdinalIgnoreCase));
         if (direct != null) return direct;
 
-        // 常见字段映射
-        var mappings = new Dictionary<string, string[]>
-        {
-            { "x", ["X", "x"] },
-            { "y", ["Y", "y"] },
-            { "z", ["Z", "z"] },
-            { "rgb", ["RGB", "RGBA", "rgb", "rgba"] },
-            { "rgba", ["RGBA", "RGB", "rgba", "rgb"] },
-            { "r", ["R", "r"] },
-            { "g", ["G", "g"] },
-            { "b", ["B", "b"] },
-            { "a", ["A", "a"] },
-            { "normal_x", ["NormalX", "NX", "normal_x"] },
-            { "normal_y", ["NormalY", "NY", "normal_y"] },
-            { "normal_z", ["NormalZ", "NZ", "normal_z"] },
-            { "curvature", ["Curvature", "curvature"] },
-            { "label", ["Label", "label"] },
-        };
-
-        if (mappings.TryGetValue(fieldName, out var candidates))
+        if (FieldMapping.Mappings.TryGetValue(fieldName, out var candidates))
         {
             foreach (var candidate in candidates)
             {
@@ -198,26 +179,7 @@ public class PointFactory<PointT> where PointT : new()
             string.Equals(f.Name, fieldName, StringComparison.OrdinalIgnoreCase));
         if (direct != null) return direct;
 
-        // 常见字段映射
-        var mappings = new Dictionary<string, string[]>
-        {
-            { "x", ["X", "x"] },
-            { "y", ["Y", "y"] },
-            { "z", ["Z", "z"] },
-            { "rgb", ["RGB", "RGBA", "rgb", "rgba"] },
-            { "rgba", ["RGBA", "RGB", "rgba", "rgb"] },
-            { "r", ["R", "r"] },
-            { "g", ["G", "g"] },
-            { "b", ["B", "b"] },
-            { "a", ["A", "a"] },
-            { "normal_x", ["NormalX", "NX", "normal_x"] },
-            { "normal_y", ["NormalY", "NY", "normal_y"] },
-            { "normal_z", ["NormalZ", "NZ", "normal_z"] },
-            { "curvature", ["Curvature", "curvature"] },
-            { "label", ["Label", "label"] },
-        };
-
-        if (mappings.TryGetValue(fieldName, out var candidates))
+        if (FieldMapping.Mappings.TryGetValue(fieldName, out var candidates))
         {
             foreach (var candidate in candidates)
             {

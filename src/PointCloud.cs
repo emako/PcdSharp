@@ -7,7 +7,7 @@ public abstract class PointCloud<PointT>
     /// <summary>
     /// 点云头部信息，包含版本、字段定义、视点等元数据
     /// </summary>
-    public abstract PCDHeader? Header { get; set; }
+    public abstract PCDHeader Header { get; set; }
 
     /// <summary>
     /// 点云宽度，从Header中获取，如果Header不存在则使用点数

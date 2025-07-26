@@ -13,7 +13,7 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
     /// <summary>
     /// 点云头部信息，包含版本、字段定义、视点等元数据
     /// </summary>
-    public override PCDHeader? Header { get; set; }
+    public override PCDHeader Header { get; set; } = new();
 
     public override List<PointT> Points
     {
@@ -110,7 +110,7 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
     {
         _points.Clear();
         _points.Capacity = 0;
-        
+
         // 如果有 Header，更新 Header 中的信息
         if (Header != null)
         {

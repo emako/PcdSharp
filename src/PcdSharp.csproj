@@ -6,9 +6,9 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>preview</LangVersion>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<AssemblyVersion>1.0.0.0</AssemblyVersion>
-		<FileVersion>1.0.0.0</FileVersion>
-		<Version>$(VersionPrefix)1.0.0.0</Version>
+		<AssemblyVersion>1.0.1.0</AssemblyVersion>
+		<FileVersion>1.0.1.0</FileVersion>
+		<Version>$(VersionPrefix)1.0.1.0</Version>
 		<Authors>ema</Authors>
 		<Company>ema</Company>
 		<Description>PcdSharp 是一个用于读取和写入 Point Cloud Data (PCD) v0.7 格式文件的高性能 C# 库。</Description>

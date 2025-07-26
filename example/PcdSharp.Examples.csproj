@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
@@ -7,6 +7,9 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>preview</LangVersion>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<AssemblyVersion>1.0.1.0</AssemblyVersion>
+		<FileVersion>1.0.1.0</FileVersion>
+		<Version>$(VersionPrefix)1.0.1.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>

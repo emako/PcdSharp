@@ -2,7 +2,7 @@
 
 namespace PcdSharp;
 
-public abstract class PointCloud<PointT>
+public abstract class PointCloud<PointT> : IDisposable
 {
     /// <summary>
     /// 点云头部信息，包含版本、字段定义、视点等元数据
@@ -29,6 +29,8 @@ public abstract class PointCloud<PointT>
     public abstract int Count { get; }
 
     public abstract bool IsOrganized { get; }
+
+    public abstract void Dispose();
 
     public abstract ref PointT At(int col, int row);
 

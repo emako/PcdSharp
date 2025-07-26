@@ -9,6 +9,7 @@ namespace PcdSharp;
 public class PointCloudImpl<PointT> : PointCloud<PointT>
 {
     private List<PointT> _points;
+    private bool _disposed = false;
 
     /// <summary>
     /// 点云头部信息，包含版本、字段定义、视点等元数据
@@ -129,6 +130,19 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
         if (_points.Capacity < capacity)
         {
             _points.Capacity = capacity;
+        }
+    }
+
+    public override void Dispose()
+    {
+        if (!_disposed)
+        {
+            // 清理托管资源
+            _points?.Clear();
+            _points = [];  // 重置为空列表而不是null
+            Header = new(); // 重置为新的默认Header而不是null
+
+            _disposed = true;
         }
     }
 }

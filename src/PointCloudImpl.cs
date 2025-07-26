@@ -6,7 +6,7 @@ namespace PcdSharp;
 /// <typeparam name="PointT">点类型</typeparam>
 public class PointCloudImpl<PointT> : PointCloud<PointT>
 {
-    private readonly List<PointT> _points;
+    private List<PointT> _points;
 
     public override int Width { get; set; }
 
@@ -14,7 +14,11 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
 
     public override bool IsDense { get; set; } = true;
 
-    public override List<PointT> Points => _points;
+    public override List<PointT> Points
+    {
+        get => _points;
+        set => _points = value ?? [];
+    }
 
     public override int Count => _points.Count;
 
@@ -93,7 +97,7 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
     /// 批量添加点
     /// </summary>
     /// <param name="points">要添加的点集合</param>
-    public void AddRange(IEnumerable<PointT> points)
+    public override void AddRange(IEnumerable<PointT> points)
     {
         _points.AddRange(points);
     }
@@ -101,16 +105,19 @@ public class PointCloudImpl<PointT> : PointCloud<PointT>
     /// <summary>
     /// 清空点云
     /// </summary>
-    public void Clear()
+    public override void Clear()
     {
         _points.Clear();
+        _points.Capacity = 0;
+        Width = 0;
+        Height = 1;
     }
 
     /// <summary>
     /// 预留容量
     /// </summary>
     /// <param name="capacity">容量</param>
-    public void Reserve(int capacity)
+    public override void Reserve(int capacity)
     {
         if (_points.Capacity < capacity)
         {

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PcdSharp", "src\PcdSharp.csproj", "{2684C9C3-F98C-4B26-A9BE-C3EDF552DAB8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PcdSharp.Examples", "example\PcdSharp.Examples.csproj", "{DF109AA2-F15F-AAB5-B65B-ED5E3E9BA3A1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2684C9C3-F98C-4B26-A9BE-C3EDF552DAB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2684C9C3-F98C-4B26-A9BE-C3EDF552DAB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2684C9C3-F98C-4B26-A9BE-C3EDF552DAB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2684C9C3-F98C-4B26-A9BE-C3EDF552DAB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF109AA2-F15F-AAB5-B65B-ED5E3E9BA3A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF109AA2-F15F-AAB5-B65B-ED5E3E9BA3A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF109AA2-F15F-AAB5-B65B-ED5E3E9BA3A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF109AA2-F15F-AAB5-B65B-ED5E3E9BA3A1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BDFEB4CD-D6FB-4D9C-9008-355226105C80}
+	EndGlobalSection
+EndGlobal

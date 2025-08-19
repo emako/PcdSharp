@@ -48,7 +48,7 @@ public struct MyCustomPoint
 ### 安装
 
 ```bash
-# 通过 NuGet 安装 (待发布)
+# 通过 NuGet 安装
 dotnet add package PcdSharp
 
 # 或者克隆源代码

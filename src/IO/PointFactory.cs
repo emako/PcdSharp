@@ -13,11 +13,13 @@ public class PointFactory<PointT> where PointT : new()
     private readonly Func<PointT> _constructor;
     private readonly Dictionary<string, Action<PointContainer<PointT>, string>> _asciiSetters;
     private readonly Dictionary<string, Action<PointContainer<PointT>, byte[], int>> _binarySetters;
+    private readonly CoordinateTransformOptions? _transformOptions;
 
-    public PointFactory(PCDHeader header)
+    public PointFactory(PCDHeader header, CoordinateTransformOptions? transformOptions = null)
     {
         _fieldMappings = CreateFieldMappings(header);
         _constructor = () => new PointT();
+        _transformOptions = transformOptions;
         _asciiSetters = CreateAsciiSetters();
         _binarySetters = CreateBinarySetters();
     }
@@ -254,7 +256,27 @@ public class PointFactory<PointT> where PointT : new()
 
                 if (property.PropertyType == typeof(float))
                 {
-                    parsedValue = float.Parse(value, CultureInfo.InvariantCulture);
+                    var floatValue = float.Parse(value, CultureInfo.InvariantCulture);
+                    
+                    // 应用坐标变换
+                    if (_transformOptions?.NeedsTransformation == true)
+                    {
+                        var propertyName = property.Name.ToLower();
+                        if (propertyName == "x")
+                            floatValue *= _transformOptions.ScaleX;
+                        else if (propertyName == "y")
+                            floatValue *= _transformOptions.ScaleY;
+                        else if (propertyName == "z")
+                            floatValue *= _transformOptions.ScaleZ;
+                        else if (propertyName == "normalx")
+                            floatValue *= Math.Sign(_transformOptions.ScaleX);
+                        else if (propertyName == "normaly")
+                            floatValue *= Math.Sign(_transformOptions.ScaleY);
+                        else if (propertyName == "normalz")
+                            floatValue *= Math.Sign(_transformOptions.ScaleZ);
+                    }
+                    
+                    parsedValue = floatValue;
                 }
                 else if (property.PropertyType == typeof(double))
                 {
@@ -298,7 +320,27 @@ public class PointFactory<PointT> where PointT : new()
 
                 if (field.FieldType == typeof(float))
                 {
-                    parsedValue = float.Parse(value, CultureInfo.InvariantCulture);
+                    var floatValue = float.Parse(value, CultureInfo.InvariantCulture);
+                    
+                    // 应用坐标变换
+                    if (_transformOptions?.NeedsTransformation == true)
+                    {
+                        var fieldName = field.Name.ToLower();
+                        if (fieldName == "x")
+                            floatValue *= _transformOptions.ScaleX;
+                        else if (fieldName == "y")
+                            floatValue *= _transformOptions.ScaleY;
+                        else if (fieldName == "z")
+                            floatValue *= _transformOptions.ScaleZ;
+                        else if (fieldName == "normalx")
+                            floatValue *= Math.Sign(_transformOptions.ScaleX);
+                        else if (fieldName == "normaly")
+                            floatValue *= Math.Sign(_transformOptions.ScaleY);
+                        else if (fieldName == "normalz")
+                            floatValue *= Math.Sign(_transformOptions.ScaleZ);
+                    }
+                    
+                    parsedValue = floatValue;
                 }
                 else if (field.FieldType == typeof(double))
                 {
@@ -341,6 +383,25 @@ public class PointFactory<PointT> where PointT : new()
                 if (property.PropertyType == typeof(float))
                 {
                     var value = *(float*)(ptr + offset);
+                    
+                    // 应用坐标变换
+                    if (_transformOptions?.NeedsTransformation == true)
+                    {
+                        var propertyName = property.Name.ToLower();
+                        if (propertyName == "x")
+                            value *= _transformOptions.ScaleX;
+                        else if (propertyName == "y")
+                            value *= _transformOptions.ScaleY;
+                        else if (propertyName == "z")
+                            value *= _transformOptions.ScaleZ;
+                        else if (propertyName == "normalx")
+                            value *= Math.Sign(_transformOptions.ScaleX);
+                        else if (propertyName == "normaly")
+                            value *= Math.Sign(_transformOptions.ScaleY);
+                        else if (propertyName == "normalz")
+                            value *= Math.Sign(_transformOptions.ScaleZ);
+                    }
+                    
                     var boxed = (object?)container.Value;
                     property.SetValue(boxed, value);
                     container.Value = (PointT)boxed!;
@@ -388,6 +449,25 @@ public class PointFactory<PointT> where PointT : new()
                 if (field.FieldType == typeof(float))
                 {
                     var value = *(float*)(ptr + offset);
+                    
+                    // 应用坐标变换
+                    if (_transformOptions?.NeedsTransformation == true)
+                    {
+                        var fieldName = field.Name.ToLower();
+                        if (fieldName == "x")
+                            value *= _transformOptions.ScaleX;
+                        else if (fieldName == "y")
+                            value *= _transformOptions.ScaleY;
+                        else if (fieldName == "z")
+                            value *= _transformOptions.ScaleZ;
+                        else if (fieldName == "normalx")
+                            value *= Math.Sign(_transformOptions.ScaleX);
+                        else if (fieldName == "normaly")
+                            value *= Math.Sign(_transformOptions.ScaleY);
+                        else if (fieldName == "normalz")
+                            value *= Math.Sign(_transformOptions.ScaleZ);
+                    }
+                    
                     field.SetValue(boxed, value);
                 }
                 else if (field.FieldType == typeof(double))

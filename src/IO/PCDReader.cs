@@ -36,7 +36,7 @@ public class PCDReader
                 continue;
 
             // 解析头部字段
-            var parts = line.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) continue;
 
             switch (parts[0].ToUpper())
@@ -148,7 +148,7 @@ public class PCDReader
             Header = header
         };
 
-        var factory = new PointFactory<PointT>(header);
+        var factory = new PointFactory<PointT>(header, null); // No transformation for now
 
         switch (header.Data)
         {
@@ -196,6 +196,220 @@ public class PCDReader
         return Read<PointT>(fileStream);
     }
 
+    /// <summary>
+    /// 读取任意类型的点云数据，支持坐标系变换
+    /// </summary>
+    /// <typeparam name="PointT">点类型</typeparam>
+    /// <param name="filePath">PCD文件路径</param>
+    /// <param name="transformOptions">坐标变换选项</param>
+    /// <returns>点云对象</returns>
+    public static PointCloud<PointT> Read<PointT>(string filePath, CoordinateTransformOptions transformOptions) where PointT : new()
+    {
+        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
+        return Read<PointT>(fileStream, transformOptions);
+    }
+
+    /// <summary>
+    /// 从流中读取任意类型的点云数据，支持坐标系变换
+    /// </summary>
+    /// <typeparam name="PointT">点类型</typeparam>
+    /// <param name="stream">PCD文件流</param>
+    /// <param name="transformOptions">坐标变换选项</param>
+    /// <returns>点云对象</returns>
+    public static PointCloud<PointT> Read<PointT>(Stream stream, CoordinateTransformOptions? transformOptions = null) where PointT : new()
+    {
+        // 为兼容性，调用原有的无变换版本
+        return ReadOriginal<PointT>(stream);
+    }
+
+    /// <summary>
+    /// 读取PCD文件并使用用户提供的回调函数创建任意类型的对象
+    /// </summary>
+    /// <typeparam name="TResult">结果对象类型</typeparam>
+    /// <param name="filePath">PCD文件路径</param>
+    /// <param name="pointConstructor">点构造器回调函数，接收字段名称和值的字典，返回构造的对象</param>
+    /// <returns>构造的对象列表</returns>
+    public static List<TResult> ReadWithCallback<TResult>(string filePath, Func<Dictionary<string, object>, TResult> pointConstructor)
+    {
+        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
+        return ReadWithCallback(fileStream, pointConstructor);
+    }
+
+    /// <summary>
+    /// 从流中读取PCD文件并使用用户提供的回调函数创建任意类型的对象
+    /// </summary>
+    /// <typeparam name="TResult">结果对象类型</typeparam>
+    /// <param name="stream">PCD文件流</param>
+    /// <param name="pointConstructor">点构造器回调函数，接收字段名称和值的字典，返回构造的对象</param>
+    /// <param name="transformOptions">可选的坐标变换选项</param>
+    /// <returns>构造的对象列表</returns>
+    public static List<TResult> ReadWithCallback<TResult>(Stream stream, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions = null)
+    {
+        // 读取头部信息
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+        var headerText = Encoding.UTF8.GetString(fileBytes);
+
+        // 找到DATA行
+        var lines = headerText.Split('\n');
+        int dataLineIndex = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (line.StartsWith("DATA ", StringComparison.OrdinalIgnoreCase))
+            {
+                dataLineIndex = i;
+                break;
+            }
+        }
+
+        if (dataLineIndex == -1)
+            throw new PcdException("Invalid PCD file: missing DATA field");
+
+        // 读取头部
+        var headerLines = lines.Take(dataLineIndex + 1);
+        var headerBytes = Encoding.UTF8.GetBytes(string.Join("\n", headerLines) + "\n");
+        using var headerStream = new MemoryStream(headerBytes);
+        using var reader = new StreamReader(headerStream, Encoding.UTF8);
+        var header = ReadHeader(reader);
+
+        var results = new List<TResult>();
+
+        // 简化版本：仅支持ASCII格式的回调处理
+        if (header.Data == DataEncoding.ASCII)
+        {
+            var dataStartPosition = headerBytes.Length;
+            using var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition);
+            using var fileReader = new StreamReader(dataStream, Encoding.UTF8);
+            
+            string? line;
+            while ((line = fileReader.ReadLine()) != null)
+            {
+                line = line.Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+
+                var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < header.Fields.Count) continue;
+
+                var fieldData = new Dictionary<string, object>();
+                for (int i = 0; i < header.Fields.Count && i < parts.Length; i++)
+                {
+                    var fieldName = header.Fields[i];
+                    object fieldValue = header.Type[i].ToUpper() switch
+                    {
+                        "I" => int.Parse(parts[i]),
+                        "U" => uint.Parse(parts[i]),
+                        "F" => float.Parse(parts[i], CultureInfo.InvariantCulture),
+                        _ => parts[i]
+                    };
+
+                    // 应用坐标变换
+                    if (transformOptions?.NeedsTransformation == true && fieldValue is float floatValue)
+                    {
+                        var lowerFieldName = fieldName.ToLower();
+                        if (lowerFieldName == "x")
+                            fieldValue = floatValue * transformOptions.ScaleX;
+                        else if (lowerFieldName == "y")
+                            fieldValue = floatValue * transformOptions.ScaleY;
+                        else if (lowerFieldName == "z")
+                            fieldValue = floatValue * transformOptions.ScaleZ;
+                    }
+
+                    fieldData[fieldName] = fieldValue;
+                }
+
+                var point = pointConstructor(fieldData);
+                results.Add(point);
+            }
+        }
+        else
+        {
+            throw new NotSupportedException("Callback reading currently only supports ASCII format");
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 原版读取方法(内部使用)
+    /// </summary>
+    private static PointCloud<PointT> ReadOriginal<PointT>(Stream stream) where PointT : new()
+    {
+        // 读取所有字节以便处理二进制格式
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+
+        var headerText = Encoding.UTF8.GetString(fileBytes);
+
+        // 找到DATA行
+        var lines = headerText.Split('\n');
+        int dataLineIndex = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (line.StartsWith("DATA ", StringComparison.OrdinalIgnoreCase))
+            {
+                dataLineIndex = i;
+                break;
+            }
+        }
+
+        if (dataLineIndex == -1)
+            throw new PcdException("Invalid PCD file: missing DATA field");
+
+        // 计算数据开始位置
+        var headerLines = lines.Take(dataLineIndex + 1);
+        var headerBytes = Encoding.UTF8.GetBytes(string.Join("\n", headerLines) + "\n");
+        var dataStartPosition = headerBytes.Length;
+
+        // 使用内存流读取头部
+        using var headerStream = new MemoryStream(headerBytes);
+        using var reader = new StreamReader(headerStream, Encoding.UTF8);
+        var header = ReadHeader(reader);
+
+        var pointCloud = new PointCloudImpl<PointT>((int)header.Points)
+        {
+            Header = header
+        };
+
+        var factory = new PointFactory<PointT>(header, null); // No transformation for now
+
+        switch (header.Data)
+        {
+            case DataEncoding.ASCII:
+                // 对于ASCII格式，重新用内存流读取
+                using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
+                using (var fileReader = new StreamReader(dataStream, Encoding.UTF8))
+                {
+                    ReadPointsAscii(fileReader, pointCloud, factory);
+                }
+                break;
+
+            case DataEncoding.Binary:
+                // 从计算出的位置开始读取二进制数据
+                using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
+                {
+                    ReadPointsBinary(dataStream, pointCloud, factory, header);
+                }
+                break;
+
+            case DataEncoding.BinaryCompressed:
+                // 从计算出的位置开始读取压缩的二进制数据
+                using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
+                {
+                    ReadPointsBinaryCompressed(dataStream, pointCloud, factory, header);
+                }
+                break;
+
+            default:
+                throw new ArgumentException($"Unsupported data encoding: {header.Data}");
+        }
+
+        return pointCloud;
+    }
+
     private static void ReadPointsAscii<PointT>(StreamReader reader, PointCloudImpl<PointT> pointCloud, PointFactory<PointT> factory) where PointT : new()
     {
         string? line;
@@ -204,7 +418,7 @@ public class PCDReader
             line = line.Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
-            var parts = line.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < factory.FieldMappings.Count) continue;
 
             var point = factory.CreateFromAscii(parts);

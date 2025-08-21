@@ -36,7 +36,7 @@ public class PCDReader
                 continue;
 
             // 解析头部字段
-            var parts = line.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) continue;
 
             switch (parts[0].ToUpper())
@@ -204,7 +204,7 @@ public class PCDReader
             line = line.Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
-            var parts = line.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < factory.FieldMappings.Count) continue;
 
             var point = factory.CreateFromAscii(parts);

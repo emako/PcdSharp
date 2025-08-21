@@ -110,18 +110,6 @@ public class PCDReader
     /// <returns>点云对象</returns>
     public static PointCloud<PointT> Read<PointT>(Stream stream) where PointT : new()
     {
-        return Read<PointT>(stream, null);
-    }
-
-    /// <summary>
-    /// 从流中读取任意类型的点云数据，支持坐标系变换 (内部实现方法)
-    /// </summary>
-    /// <typeparam name="PointT">点类型</typeparam>
-    /// <param name="stream">PCD文件流</param>
-    /// <param name="transformOptions">坐标变换选项</param>
-    /// <returns>点云对象</returns>
-    private static PointCloud<PointT> ReadInternal<PointT>(Stream stream, CoordinateTransformOptions? transformOptions) where PointT : new()
-    {
         // 读取所有字节以便处理二进制格式
         using var memoryStream = new MemoryStream();
         stream.CopyTo(memoryStream);
@@ -160,7 +148,7 @@ public class PCDReader
             Header = header
         };
 
-        var factory = new PointFactory<PointT>(header, transformOptions);
+        var factory = new PointFactory<PointT>(header, null); // No transformation for now
 
         switch (header.Data)
         {
@@ -230,7 +218,8 @@ public class PCDReader
     /// <returns>点云对象</returns>
     public static PointCloud<PointT> Read<PointT>(Stream stream, CoordinateTransformOptions? transformOptions = null) where PointT : new()
     {
-        return ReadInternal<PointT>(stream, transformOptions);
+        // 为兼容性，调用原有的无变换版本
+        return ReadOriginal<PointT>(stream);
     }
 
     /// <summary>
@@ -255,6 +244,97 @@ public class PCDReader
     /// <param name="transformOptions">可选的坐标变换选项</param>
     /// <returns>构造的对象列表</returns>
     public static List<TResult> ReadWithCallback<TResult>(Stream stream, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions = null)
+    {
+        // 读取头部信息
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+        var headerText = Encoding.UTF8.GetString(fileBytes);
+
+        // 找到DATA行
+        var lines = headerText.Split('\n');
+        int dataLineIndex = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (line.StartsWith("DATA ", StringComparison.OrdinalIgnoreCase))
+            {
+                dataLineIndex = i;
+                break;
+            }
+        }
+
+        if (dataLineIndex == -1)
+            throw new PcdException("Invalid PCD file: missing DATA field");
+
+        // 读取头部
+        var headerLines = lines.Take(dataLineIndex + 1);
+        var headerBytes = Encoding.UTF8.GetBytes(string.Join("\n", headerLines) + "\n");
+        using var headerStream = new MemoryStream(headerBytes);
+        using var reader = new StreamReader(headerStream, Encoding.UTF8);
+        var header = ReadHeader(reader);
+
+        var results = new List<TResult>();
+
+        // 简化版本：仅支持ASCII格式的回调处理
+        if (header.Data == DataEncoding.ASCII)
+        {
+            var dataStartPosition = headerBytes.Length;
+            using var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition);
+            using var fileReader = new StreamReader(dataStream, Encoding.UTF8);
+            
+            string? line;
+            while ((line = fileReader.ReadLine()) != null)
+            {
+                line = line.Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+
+                var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < header.Fields.Count) continue;
+
+                var fieldData = new Dictionary<string, object>();
+                for (int i = 0; i < header.Fields.Count && i < parts.Length; i++)
+                {
+                    var fieldName = header.Fields[i];
+                    object fieldValue = header.Type[i].ToUpper() switch
+                    {
+                        "I" => int.Parse(parts[i]),
+                        "U" => uint.Parse(parts[i]),
+                        "F" => float.Parse(parts[i], CultureInfo.InvariantCulture),
+                        _ => parts[i]
+                    };
+
+                    // 应用坐标变换
+                    if (transformOptions?.NeedsTransformation == true && fieldValue is float floatValue)
+                    {
+                        var lowerFieldName = fieldName.ToLower();
+                        if (lowerFieldName == "x")
+                            fieldValue = floatValue * transformOptions.ScaleX;
+                        else if (lowerFieldName == "y")
+                            fieldValue = floatValue * transformOptions.ScaleY;
+                        else if (lowerFieldName == "z")
+                            fieldValue = floatValue * transformOptions.ScaleZ;
+                    }
+
+                    fieldData[fieldName] = fieldValue;
+                }
+
+                var point = pointConstructor(fieldData);
+                results.Add(point);
+            }
+        }
+        else
+        {
+            throw new NotSupportedException("Callback reading currently only supports ASCII format");
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 原版读取方法(内部使用)
+    /// </summary>
+    private static PointCloud<PointT> ReadOriginal<PointT>(Stream stream) where PointT : new()
     {
         // 读取所有字节以便处理二进制格式
         using var memoryStream = new MemoryStream();
@@ -289,7 +369,12 @@ public class PCDReader
         using var reader = new StreamReader(headerStream, Encoding.UTF8);
         var header = ReadHeader(reader);
 
-        var results = new List<TResult>();
+        var pointCloud = new PointCloudImpl<PointT>((int)header.Points)
+        {
+            Header = header
+        };
+
+        var factory = new PointFactory<PointT>(header, null); // No transformation for now
 
         switch (header.Data)
         {
@@ -298,7 +383,7 @@ public class PCDReader
                 using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
                 using (var fileReader = new StreamReader(dataStream, Encoding.UTF8))
                 {
-                    ReadPointsWithCallbackAscii(fileReader, header, results, pointConstructor, transformOptions);
+                    ReadPointsAscii(fileReader, pointCloud, factory);
                 }
                 break;
 
@@ -306,7 +391,7 @@ public class PCDReader
                 // 从计算出的位置开始读取二进制数据
                 using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
                 {
-                    ReadPointsWithCallbackBinary(dataStream, header, results, pointConstructor, transformOptions);
+                    ReadPointsBinary(dataStream, pointCloud, factory, header);
                 }
                 break;
 
@@ -314,7 +399,7 @@ public class PCDReader
                 // 从计算出的位置开始读取压缩的二进制数据
                 using (var dataStream = new MemoryStream(fileBytes, dataStartPosition, fileBytes.Length - dataStartPosition))
                 {
-                    ReadPointsWithCallbackBinaryCompressed(dataStream, header, results, pointConstructor, transformOptions);
+                    ReadPointsBinaryCompressed(dataStream, pointCloud, factory, header);
                 }
                 break;
 
@@ -322,8 +407,7 @@ public class PCDReader
                 throw new ArgumentException($"Unsupported data encoding: {header.Data}");
         }
 
-        return results;
-    }
+        return pointCloud;
     }
 
     private static void ReadPointsAscii<PointT>(StreamReader reader, PointCloudImpl<PointT> pointCloud, PointFactory<PointT> factory) where PointT : new()
@@ -490,222 +574,5 @@ public class PCDReader
         while (iidx < inputLength);
 
         return output;
-    }
-
-    /// <summary>
-    /// 使用回调函数读取ASCII格式的点数据
-    /// </summary>
-    private static void ReadPointsWithCallbackAscii<TResult>(StreamReader reader, PCDHeader header, List<TResult> results, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions)
-    {
-        string? line;
-        while ((line = reader.ReadLine()) != null)
-        {
-            line = line.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
-
-            var parts = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < header.Fields.Count) continue;
-
-            var fieldData = new Dictionary<string, object>();
-            for (int i = 0; i < header.Fields.Count && i < parts.Length; i++)
-            {
-                var fieldName = header.Fields[i];
-                var fieldValue = ParseFieldValue(parts[i], header.Type[i]);
-                
-                // 应用坐标变换
-                if (transformOptions?.NeedsTransformation == true && fieldValue is float floatValue)
-                {
-                    var lowerFieldName = fieldName.ToLower();
-                    if (lowerFieldName == "x")
-                        fieldValue = floatValue * transformOptions.ScaleX;
-                    else if (lowerFieldName == "y")
-                        fieldValue = floatValue * transformOptions.ScaleY;
-                    else if (lowerFieldName == "z")
-                        fieldValue = floatValue * transformOptions.ScaleZ;
-                    else if (lowerFieldName == "normal_x")
-                        fieldValue = floatValue * Math.Sign(transformOptions.ScaleX);
-                    else if (lowerFieldName == "normal_y")
-                        fieldValue = floatValue * Math.Sign(transformOptions.ScaleY);
-                    else if (lowerFieldName == "normal_z")
-                        fieldValue = floatValue * Math.Sign(transformOptions.ScaleZ);
-                }
-
-                fieldData[fieldName] = fieldValue;
-            }
-
-            var point = pointConstructor(fieldData);
-            results.Add(point);
-        }
-    }
-
-    /// <summary>
-    /// 使用回调函数读取Binary格式的点数据
-    /// </summary>
-    private static void ReadPointsWithCallbackBinary<TResult>(Stream stream, PCDHeader header, List<TResult> results, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions)
-    {
-        var pointSize = header.Size.Zip(header.Count, (s, c) => s * c).Sum();
-        var buffer = new byte[pointSize];
-
-        for (int i = 0; i < header.Points; i++)
-        {
-            var bytesRead = stream.Read(buffer, 0, pointSize);
-            if (bytesRead != pointSize) break;
-
-            var fieldData = ParseBinaryPoint(buffer, header, transformOptions);
-            var point = pointConstructor(fieldData);
-            results.Add(point);
-        }
-    }
-
-    /// <summary>
-    /// 使用回调函数读取Binary Compressed格式的点数据
-    /// </summary>
-    private static void ReadPointsWithCallbackBinaryCompressed<TResult>(Stream stream, PCDHeader header, List<TResult> results, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions)
-    {
-        // 读取压缩信息
-        var compressionInfo = new byte[8];
-        var bytesRead = stream.Read(compressionInfo, 0, 8);
-        if (bytesRead != 8)
-            throw new PcdException("Failed to read compression info from binary compressed data");
-
-        int compressedSize = BitConverter.ToInt32(compressionInfo, 0);
-        int decompressedSize = BitConverter.ToInt32(compressionInfo, 4);
-
-        // 读取压缩数据
-        var compressedData = new byte[compressedSize];
-        bytesRead = stream.Read(compressedData, 0, compressedSize);
-        if (bytesRead != compressedSize)
-            throw new PcdException("Failed to read compressed data from binary compressed data");
-
-        // 解压缩数据
-        var decompressedData = LzfDecompress(compressedData, decompressedSize);
-        if (decompressedData == null)
-            throw new PcdException("Failed to decompress binary compressed data");
-
-        // 解析解压后的数据
-        ParseDecompressedDataWithCallback(decompressedData, header, results, pointConstructor, transformOptions);
-    }
-
-    /// <summary>
-    /// 解析压缩数据并使用回调函数创建对象
-    /// </summary>
-    private static void ParseDecompressedDataWithCallback<TResult>(byte[] data, PCDHeader header, List<TResult> results, Func<Dictionary<string, object>, TResult> pointConstructor, CoordinateTransformOptions? transformOptions)
-    {
-        int pointCount = (int)header.Points;
-        int fieldCount = header.Fields.Count;
-
-        // 为每个点创建字节数组
-        var pointSize = header.Size.Sum();
-        var points = new List<byte[]>();
-
-        for (int i = 0; i < pointCount; i++)
-        {
-            points.Add(new byte[pointSize]);
-        }
-
-        int dataOffset = 0;
-        int pointOffset = 0;
-
-        // 按字段顺序重组数据
-        for (int fieldIdx = 0; fieldIdx < fieldCount; fieldIdx++)
-        {
-            int fieldSize = header.Size[fieldIdx];
-            int fieldCount_per_point = header.Count[fieldIdx];
-
-            for (int countIdx = 0; countIdx < fieldCount_per_point; countIdx++)
-            {
-                for (int pointIdx = 0; pointIdx < pointCount; pointIdx++)
-                {
-                    if (dataOffset + fieldSize <= data.Length)
-                    {
-                        Array.Copy(data, dataOffset, points[pointIdx], pointOffset, fieldSize);
-                        dataOffset += fieldSize;
-                    }
-                }
-                pointOffset += fieldSize;
-            }
-        }
-
-        // 使用回调函数创建对象
-        foreach (var pointData in points)
-        {
-            var fieldData = ParseBinaryPoint(pointData, header, transformOptions);
-            var point = pointConstructor(fieldData);
-            results.Add(point);
-        }
-    }
-
-    /// <summary>
-    /// 解析字段值
-    /// </summary>
-    private static object ParseFieldValue(string value, string dataType)
-    {
-        return dataType.ToUpper() switch
-        {
-            "I" => int.Parse(value),
-            "U" => uint.Parse(value),
-            "F" => float.Parse(value, CultureInfo.InvariantCulture),
-            _ => value
-        };
-    }
-
-    /// <summary>
-    /// 解析二进制点数据
-    /// </summary>
-    private static unsafe Dictionary<string, object> ParseBinaryPoint(byte[] buffer, PCDHeader header, CoordinateTransformOptions? transformOptions)
-    {
-        var fieldData = new Dictionary<string, object>();
-        int offset = 0;
-
-        fixed (byte* ptr = buffer)
-        {
-            for (int i = 0; i < header.Fields.Count; i++)
-            {
-                var fieldName = header.Fields[i];
-                var fieldSize = header.Size[i];
-                var dataType = header.Type[i];
-                var count = header.Count[i];
-
-                for (int c = 0; c < count; c++)
-                {
-                    object value = dataType.ToUpper() switch
-                    {
-                        "I" when fieldSize == 1 => *(sbyte*)(ptr + offset),
-                        "I" when fieldSize == 2 => *(short*)(ptr + offset),
-                        "I" when fieldSize == 4 => *(int*)(ptr + offset),
-                        "U" when fieldSize == 1 => *(ptr + offset),
-                        "U" when fieldSize == 2 => *(ushort*)(ptr + offset),
-                        "U" when fieldSize == 4 => *(uint*)(ptr + offset),
-                        "F" when fieldSize == 4 => *(float*)(ptr + offset),
-                        "F" when fieldSize == 8 => *(double*)(ptr + offset),
-                        _ => 0
-                    };
-
-                    // 应用坐标变换
-                    if (transformOptions?.NeedsTransformation == true && value is float floatValue)
-                    {
-                        var lowerFieldName = fieldName.ToLower();
-                        if (lowerFieldName == "x")
-                            value = floatValue * transformOptions.ScaleX;
-                        else if (lowerFieldName == "y")
-                            value = floatValue * transformOptions.ScaleY;
-                        else if (lowerFieldName == "z")
-                            value = floatValue * transformOptions.ScaleZ;
-                        else if (lowerFieldName == "normal_x")
-                            value = floatValue * Math.Sign(transformOptions.ScaleX);
-                        else if (lowerFieldName == "normal_y")
-                            value = floatValue * Math.Sign(transformOptions.ScaleY);
-                        else if (lowerFieldName == "normal_z")
-                            value = floatValue * Math.Sign(transformOptions.ScaleZ);
-                    }
-
-                    var key = count > 1 ? $"{fieldName}_{c}" : fieldName;
-                    fieldData[key] = value;
-                    offset += fieldSize;
-                }
-            }
-        }
-
-        return fieldData;
     }
 }

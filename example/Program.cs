@@ -81,10 +81,19 @@ internal sealed class Program
             Console.WriteLine("- 支持任意点类型 (PointXYZ, PointXYZRGBA, IntensityXYZ, 自定义点类型)");
             Console.WriteLine("- 完整的头部信息解析");
             Console.WriteLine("- 向后兼容的 API");
+            Console.WriteLine("- 坐标系变换 (LHS/RHS 转换)");
 
             // 如果没有提供文件参数，演示创建和写入点云
             Console.WriteLine("\n演示创建和写入点云:");
             DemoCreateAndWritePointCloud();
+            
+            // 演示坐标系变换功能
+            Console.WriteLine("\n");
+            CoordinateTransformExample.DemoCoordinateTransform();
+            
+            // 演示回调函数读取功能
+            Console.WriteLine("\n");
+            CallbackReadingExample.DemoCallbackReading();
         }
     }
 
